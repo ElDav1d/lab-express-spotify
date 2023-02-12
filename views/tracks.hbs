@@ -1,0 +1,12 @@
+<header>
+    <h1>{{artistName}}'s {{albumName}}</h1>
+</header>
+<main>
+    <ul>
+        {{#each trackList}}
+        <li>
+            <h3>{{this.name}}</h3>
+        </li>
+        {{/each}}
+    </ul>
+</main>

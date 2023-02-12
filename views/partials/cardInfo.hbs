@@ -1,0 +1,9 @@
+<li>
+    {{#if thumbnail.url}}
+    <img src="{{thumbnail.url}}" alt="A picture of {{name}}">
+    {{else}}
+    <img src="{{imageFallback}}" alt="No pictures available" width="140">
+    {{/if}}
+    <h3>{{name}}</h3>
+    <a href={{routePath}}>View {{linkTitle}}</a>
+</li>

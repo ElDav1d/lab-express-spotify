@@ -1,0 +1,12 @@
+<header>
+    <h1>Albums for: {{artistName}}</h1>
+</header>
+<main>
+    <ul>
+        {{#each albumList}}
+
+        {{>cardInfo this}}
+
+        {{/each}}
+    </ul>
+</main>
