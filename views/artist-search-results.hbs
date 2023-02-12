@@ -1,0 +1,16 @@
+<main>
+  <ul>
+    {{#each artistList}}
+    <li>
+      {{#if this.thumbnail.url}}
+      <img src="{{this.thumbnail.url}}" alt="A picture of {{this.name}}">
+      {{else}}
+      <img src="{{this.imageFallback}}" alt="No pictures available" width="140">
+      {{/if}}
+
+      <h3>{{this.name}}</h3>
+      <a href={{this.id}}>View albums</a>
+    </li>
+    {{/each}}
+  </ul>
+</main>

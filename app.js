@@ -21,12 +21,44 @@ const spotifyApi = new SpotifyWebApi({
 // Retrieve an access token
 spotifyApi
   .clientCredentialsGrant()
-  .then((data) => spotifyApi.setAccessToken(data.body["access_token"]))
+  .then((data) => {
+    spotifyApi.setAccessToken(data.body["access_token"]);
+    console;
+  })
   .catch((error) =>
     console.log("Something went wrong when retrieving an access token", error)
   );
 
 // Our routes go here:
+
+app.get("/index", (req, res, next) => {
+  res.render("home.hbs");
+});
+
+app.get("/artist-search", (req, res, next) => {
+  const { artist } = req.query;
+  const imageFallback =
+    "https://w7.pngwing.com/pngs/75/488/png-transparent-cute-kitten-s-pet-kitty-kitten-thumbnail.png";
+
+  spotifyApi
+    .searchArtists(artist, { limit: 50 })
+    .then((response) => {
+      const { items } = response.body.artists;
+      const artistList = items.map(({ name, id, images }) => {
+        return {
+          name,
+          id,
+          thumbnail: images[2],
+          imageFallback,
+        };
+      });
+
+      res.render("artist-search-results.hbs", { artistList, imageFallback });
+    })
+    .catch((error) => {
+      next(error);
+    });
+});
 
 app.listen(3000, () =>
   console.log("My Spotify project running on port 3000 🎧 🥁 🎸 🔊")
