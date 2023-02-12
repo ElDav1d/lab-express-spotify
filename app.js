@@ -18,6 +18,10 @@ app.set("views", __dirname + "/views");
 require("hbs").registerPartials(__dirname + "/views/partials");
 app.use(express.static(__dirname + "/public"));
 
+// Locals
+app.locals.imageFallback =
+  "https://w7.pngwing.com/pngs/75/488/png-transparent-cute-kitten-s-pet-kitty-kitten-thumbnail.png";
+
 // setting the spotify-api goes here:
 const spotifyApi = new SpotifyWebApi({
   clientId: process.env.CLIENT_ID,
@@ -41,10 +45,8 @@ app.get("/index", (req, res, next) => {
   res.render("home.hbs");
 });
 
-app.get("/artist-search", (req, res, next) => {
+app.get("/artist-search", async (req, res, next) => {
   const { artist } = req.query;
-  const imageFallback =
-    "https://w7.pngwing.com/pngs/75/488/png-transparent-cute-kitten-s-pet-kitty-kitten-thumbnail.png";
 
   spotifyApi
     .searchArtists(artist, { limit: 50 })
@@ -55,7 +57,6 @@ app.get("/artist-search", (req, res, next) => {
           name,
           id,
           thumbnail: images[2],
-          imageFallback,
           linkTitle: "Albums",
           routePath: `/albums/${id}`,
         };
@@ -72,40 +73,29 @@ app.get("/artist-search", (req, res, next) => {
 
 app.get("/albums/:artistId", (req, res, next) => {
   const { artistId } = req.params;
-  const albumList = [];
-  const imageFallback =
-    "https://w7.pngwing.com/pngs/75/488/png-transparent-cute-kitten-s-pet-kitty-kitten-thumbnail.png";
-  let artistName;
 
-  spotifyApi
-    .getArtist(artistId)
-    .then((responseArtist) => {
-      artistName = responseArtist.body.name;
-      return spotifyApi.getArtistAlbums(artistId);
-    })
+  Promise.all([
+    spotifyApi.getArtist(artistId),
+    spotifyApi.getArtistAlbums(artistId),
+  ])
     .then((response) => {
-      const { items } = response.body;
-
-      items.forEach(({ name, id, images }) => {
-        albumList.push({
+      const [artist, albums] = response;
+      const albumList = albums.body.items.map(({ name, id, images }) => {
+        return {
           name,
           id,
           thumbnail: images[2],
-          imageFallback,
           linkTitle: "Tracks",
           routePath: `/tracks/${id}`,
-        });
+        };
       });
-    })
-    .catch((error) => {
-      next(error);
-    })
-    .finally(() => {
+
       res.render("albums.hbs", {
-        artistName,
+        artistName: artist.body.name,
         albumList,
       });
-    });
+    })
+    .catch((error) => next(error));
 });
 
 app.get("/tracks/:albumId", (req, res, next) => {
@@ -113,31 +103,55 @@ app.get("/tracks/:albumId", (req, res, next) => {
   const trackList = [];
   let artistName, albumName;
 
-  spotifyApi
-    .getAlbum(albumId)
+  Promise.all([
+    spotifyApi.getAlbum(albumId),
+    spotifyApi.getAlbumTracks(albumId),
+  ])
     .then((response) => {
+      const [album, tracks] = response;
+
       const {
         name,
         artists: [artist],
-      } = response.body;
+      } = album.body;
 
-      artistName = artist.name;
-      albumName = name;
-
-      return spotifyApi.getAlbumTracks(albumId);
-    })
-    .then((response) => {
-      response.body.items.forEach(({ name, preview_url }) => {
-        trackList.push({ name, preview_url });
+      const trackList = tracks.body.items.map(({ name, preview_url }) => {
+        return { name, preview_url };
       });
 
       res.render("tracks.hbs", {
-        artistName,
-        albumName,
+        artistName: artist.name,
+        albumName: name,
         trackList,
       });
     })
     .catch((error) => next(error));
+
+  // spotifyApi
+  //   .getAlbum(albumId)
+  //   .then((response) => {
+  //     const {
+  //       name,
+  //       artists: [artist],
+  //     } = response.body;
+
+  //     artistName = artist.name;
+  //     albumName = name;
+
+  //     return spotifyApi.getAlbumTracks(albumId);
+  //   })
+  //   .then((response) => {
+  //     response.body.items.forEach(({ name, preview_url }) => {
+  //       trackList.push({ name, preview_url });
+  //     });
+
+  //     res.render("tracks.hbs", {
+  //       artistName,
+  //       albumName,
+  //       trackList,
+  //     });
+  //   })
+  //   .catch((error) => next(error));
 });
 
 app.listen(3000, () =>
