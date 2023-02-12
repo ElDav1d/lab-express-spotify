@@ -10,6 +10,7 @@ const app = express();
 
 // Middleware
 const logger = require("morgan");
+const { response } = require("express");
 app.use(logger("dev"));
 
 // Settings
@@ -47,20 +48,41 @@ app.get("/index", (req, res, next) => {
 
 app.get("/artist-search", async (req, res, next) => {
   const { artist } = req.query;
+  const callLimit = 50;
+  const callsQueue = [];
 
   spotifyApi
-    .searchArtists(artist, { limit: 50 })
+    .searchArtists(artist)
     .then((response) => {
-      const { items } = response.body.artists;
-      const artistList = items.map(({ name, id, images }) => {
-        return {
-          name,
-          id,
-          thumbnail: images[2],
-          linkTitle: "Albums",
-          routePath: `/albums/${id}`,
-        };
-      });
+      const { total } = response.body.artists;
+      const callsCount = Math.ceil(total / callLimit);
+
+      for (let i = 0; i < callsCount; i++) {
+        callsQueue.push(
+          spotifyApi.searchArtists(artist, {
+            limit: callLimit,
+            offset: i * callLimit,
+          })
+        );
+      }
+    })
+    .then(() => {
+      return Promise.all(callsQueue);
+    })
+    .then((response) => {
+      const artistList = [];
+
+      response.forEach((stack) =>
+        stack.body.artists.items.forEach(({ name, id, images }) => {
+          artistList.push({
+            name,
+            id,
+            thumbnail: images[2],
+            linkTitle: "Albums",
+            routePath: `/albums/${id}`,
+          });
+        })
+      );
 
       res.render("artist-search-results.hbs", {
         artistList,
@@ -100,8 +122,6 @@ app.get("/albums/:artistId", (req, res, next) => {
 
 app.get("/tracks/:albumId", (req, res, next) => {
   const { albumId } = req.params;
-  const trackList = [];
-  let artistName, albumName;
 
   Promise.all([
     spotifyApi.getAlbum(albumId),
@@ -126,32 +146,6 @@ app.get("/tracks/:albumId", (req, res, next) => {
       });
     })
     .catch((error) => next(error));
-
-  // spotifyApi
-  //   .getAlbum(albumId)
-  //   .then((response) => {
-  //     const {
-  //       name,
-  //       artists: [artist],
-  //     } = response.body;
-
-  //     artistName = artist.name;
-  //     albumName = name;
-
-  //     return spotifyApi.getAlbumTracks(albumId);
-  //   })
-  //   .then((response) => {
-  //     response.body.items.forEach(({ name, preview_url }) => {
-  //       trackList.push({ name, preview_url });
-  //     });
-
-  //     res.render("tracks.hbs", {
-  //       artistName,
-  //       albumName,
-  //       trackList,
-  //     });
-  //   })
-  //   .catch((error) => next(error));
 });
 
 app.listen(3000, () =>
