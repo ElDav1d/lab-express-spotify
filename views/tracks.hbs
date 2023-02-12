@@ -6,6 +6,13 @@
         {{#each trackList}}
         <li>
             <h3>{{this.name}}</h3>
+            {{#if this.preview_url}}
+            <audio controls>
+                <source src={{this.preview_url}} type="audio/mpeg">
+            </audio>
+            {{else}}
+            <h4>NO PREVIEW AVAILABLE!</h4>
+            {{/if}}
         </li>
         {{/each}}
     </ul>
